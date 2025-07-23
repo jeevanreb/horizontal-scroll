@@ -2,44 +2,44 @@ import React, { useRef, useLayoutEffect, useEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+/* ------------------------------------------------------------------
+ * ASSETS
+ * ----------------------------------------------------------------*/
+import handImage from "../assets/fixed-hand.png";
+import screen1 from "../assets/1-page-1.png";
+import screen2 from "../assets/1-page-2.png";
+import screen3 from "../assets/1-page-3.png";
+import screen4 from "../assets/1-page-4.png";
+
+/* ------------------------------------------------------------------
+ * REGISTER GSAP PLUGIN
+ * ----------------------------------------------------------------*/
 gsap.registerPlugin(ScrollTrigger);
 
 export default function HorizontalScrollWithThankYou() {
   const containerRef = useRef(null);
 
-  /* ---------- refs for card sections ---------- */
+  /* ---------- refs for horizontal card galleries ---------- */
   const galleries = useRef([]);
   const gallerySections = useRef([]);
 
-  /* ---------- refs for animated “thank-you” text ---------- */
-  const charsRef = useRef([]); // nested [line][char] array
+  /* ---------- refs for thank‑you progressive text ---------- */
   const thankYouRef = useRef(null);
-  const lineRefs   = useRef([]);
+  const lineRefs = useRef([]);
+  const charsRef = useRef([]);
 
   /* ---------- refs for review section ---------- */
-  const reviewRef       = useRef(null);   // section wrapper
-  const reviewTrackRef  = useRef(null);   // flex track that slides
-  const reviewItemsRef  = useRef([]);     // actual review cards (no placeholder)
+  const reviewRef = useRef(null);
+  const reviewTrackRef = useRef(null);
+  const reviewItemsRef = useRef([]);
 
-  /* ------------------------------------------------------------------
-   * CONFIG DATA
-   * ----------------------------------------------------------------*/
-  const cardSections = [
-    { start: 1,  end: 7,  title: "First Card Section",  description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit." },
-    { start: 10, end: 17, title: "Second Card Section", description: "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
-    { start: 20, end: 27, title: "Third Card Section",  description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi." },
-  ];
-
-  const reviews = [
-    { name: "Alice",   text: "Amazing experience! Highly recommended.Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
-    { name: "Bob",     text: "The team was professional and supportive.Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
-    { name: "Charlie", text: "Absolutely loved the workflow and delivery.Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
-    { name: "Dana",    text: "Reliable, efficient, and friendly support.Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
-  ];
-
-  const thankYouText =
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit Lorem ipsum dolor sit.";
-
+  /* ---------- refs for DEVICE (hand + changing screens) ----- */
+  const deviceSectionRef = useRef(null);
+  const screenImgRef = useRef(null);
+  const textTrackRef = useRef(null);
+  const textCardsRef = useRef([]);
+  const screenWrapperRef = useRef(null);
+  const screenRefs = useRef([]);
   /* ------------------------------------------------------------------
    * 1️⃣  Horizontal scrolling card galleries
    * ----------------------------------------------------------------*/
@@ -68,7 +68,34 @@ export default function HorizontalScrollWithThankYou() {
     return () => ctx.revert();
   }, []);
 
+
   /* ------------------------------------------------------------------
+   * DATA DEFINITIONS
+   * ----------------------------------------------------------------*/
+  const cardSections = [
+    { start: 1, end: 7, title: "First Card Section", description: "Lorem ipsum dolor sit amet, consectetur adipiscing elit." },
+    { start: 10, end: 17, title: "Second Card Section", description: "Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua." },
+    { start: 20, end: 27, title: "Third Card Section", description: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi." },
+  ];
+
+  const reviews = [
+    { name: "Alice", text: "Amazing experience! Highly recommended." },
+    { name: "Bob", text: "The team was professional and supportive." },
+    { name: "Charlie", text: "Absolutely loved the workflow and delivery." },
+    { name: "Dana", text: "Reliable, efficient, and friendly support!" },
+  ];
+
+  const deviceScreens = [screen1, screen2, screen3, screen4];
+  const deviceTexts = [
+    { heading: "Connect", para: "Instantly sync across devices." },
+    { heading: "Discover", para: "Explore curated content daily." },
+    { heading: "Create", para: "Build your own playlists easily." },
+    { heading: "Share", para: "Send moments with one tap." },
+  ];
+  const thankYouText =
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit Lorem ipsum dolor sit.";
+
+ /* ------------------------------------------------------------------
    * 2️⃣  Progressive reveal for “Thank You” text
    * ----------------------------------------------------------------*/
   useEffect(() => {
@@ -142,12 +169,71 @@ export default function HorizontalScrollWithThankYou() {
     return () => ctx.revert();
   }, []);
 
-  /* ------------------------------------------------------------------
-   * JSX
-   * ----------------------------------------------------------------*/
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      const track = textTrackRef.current;
+      const cardWidth = textCardsRef.current[0]?.offsetWidth || 300;
+      const gap = 64;
+      const totalSteps = deviceScreens.length - 1;
+      const scrollDistance = (cardWidth + gap) * totalSteps;
+
+      // Initial position (off-screen right)
+gsap.set(track, { x: '30vw' });
+
+// Animate to scroll into view
+gsap.to(track, {
+  x: () => `-${scrollDistance}px`,
+  ease: "none",
+  scrollTrigger: {
+    trigger: deviceSectionRef.current,
+    start: "top top",
+    end: () => `+=${scrollDistance}`,
+    scrub: true,
+    pin: true,
+  },
+});
+
+      // Slide in new screen images
+     let previousIndex = 0;
+
+ScrollTrigger.create({
+  trigger: deviceSectionRef.current,
+  start: "top top",
+  end: `+=${scrollDistance}`,
+  scrub: true,
+  onUpdate: (self) => {
+    const step = Math.round(self.progress * totalSteps);
+    if (step !== previousIndex) {
+      const from = screenRefs.current[previousIndex];
+      const to = screenRefs.current[step];
+
+      if (from && to) {
+        // Direction: forward or backward
+        const direction = step > previousIndex ? "forward" : "backward";
+
+        // Reset entering screen's position based on direction
+        gsap.set(to, { x: direction === "forward" ? "100%" : "-100%", opacity: 1 });
+
+        // Animate both
+        gsap.to(from, { x: direction === "forward" ? "-100%" : "100%", opacity: 0, duration: 0.4 });
+        gsap.to(to, { x: "0%", duration: 0.4 });
+
+        previousIndex = step;
+      }
+    }
+  },
+});
+
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <div ref={containerRef} className="overflow-x-hidden">
-      {/* ---------- Card Galleries ---------- */}
+    <div ref={containerRef} className="overflow-x-hidden bg-[#090113]">
+      {/* Other sections stay the same */}
+
       {cardSections.map((range, idx) => (
         <React.Fragment key={idx}>
           {/* Static header / description */}
@@ -244,7 +330,51 @@ export default function HorizontalScrollWithThankYou() {
         </div>
       </section>
 
-      {/* ---------- End Section ---------- */}
+      {/* ---------- DEVICE SHOWCASE SECTION ---------- */}
+      <section
+        ref={deviceSectionRef}
+        className="h-screen w-screen bg-[#2E0435] relative flex items-center justify-center px-10"
+      >
+        {/* Fixed hand with sliding screens */}
+        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
+          <img
+            src={handImage}
+            alt="hand"
+            className="w-[500px] max-h-[90vh] object-contain ml-20"
+          />
+
+          {/* Wrapper for all screen images */}
+          <div ref={screenWrapperRef} className="absolute top-[5%] left-[28.5%] w-[35%] h-[93%] overflow-hidden rounded-xl z-30">
+            {deviceScreens.map((src, i) => (
+              <img
+                key={i}
+                ref={(el) => (screenRefs.current[i] = el)}
+                src={src}
+                alt={`screen-${i}`}
+                className="absolute w-full h-full object-cover rounded-xl shadow-lg opacity-0"
+                style={{ top: 0, left: 0 }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Scrollable text cards */}
+        <div className="relative overflow-hidden w-full z-10 pt-20">
+          <div ref={textTrackRef} className="flex gap-16 px-[30vw]">
+            {deviceTexts.map((t, i) => (
+              <div
+                key={i}
+                ref={(el) => (textCardsRef.current[i] = el)}
+                className="w-[300px] flex-shrink-0  p-6 rounded-xl text-white"
+              >
+                <h3 className="text-xl font-bold mb-2 text-center">{t.heading}</h3>
+                <p className="text-white/80 text-center">{t.para}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+       {/* ---------- END SECTION ---------- */}
       <section className="h-screen w-screen flex items-center justify-center bg-black">
         <h1 className="text-white text-6xl font-extrabold">The End</h1>
       </section>
