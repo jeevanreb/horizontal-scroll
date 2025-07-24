@@ -170,66 +170,63 @@ export default function HorizontalScrollWithThankYou() {
   }, []);
 
 
-  useLayoutEffect(() => {
+useLayoutEffect(() => {
     const ctx = gsap.context(() => {
-      const track = textTrackRef.current;
-      const cardWidth = textCardsRef.current[0]?.offsetWidth || 300;
-      const gap = 64;
       const totalSteps = deviceScreens.length - 1;
-      const scrollDistance = (cardWidth + gap) * totalSteps;
+      const scrollDistance = 1000; // you can calculate based on card width and gap if needed
 
-      // Initial position (off-screen right)
-gsap.set(track, { x: '30vw' });
+      gsap.set(screenRefs.current, { x: "100%", opacity: 0 });
+      gsap.set(screenRefs.current[0], { x: "0%", opacity: 1 });
 
-// Animate to scroll into view
-gsap.to(track, {
-  x: () => `-${scrollDistance}px`,
-  ease: "none",
-  scrollTrigger: {
-    trigger: deviceSectionRef.current,
-    start: "top top",
-    end: () => `+=${scrollDistance}`,
-    scrub: true,
-    pin: true,
-  },
-});
+      let previousIndex = 0;
 
-      // Slide in new screen images
-     let previousIndex = 0;
+      ScrollTrigger.create({
+        trigger: deviceSectionRef.current,
+        start: "top top",
+        end: `+=${scrollDistance}`,
+        scrub: true,
+        pin: true,
+        onUpdate: (self) => {
+          const step = Math.round(self.progress * totalSteps);
+          if (step !== previousIndex) {
+            const from = screenRefs.current[previousIndex];
+            const to = screenRefs.current[step];
+            const direction = step > previousIndex ? 1 : -1;
 
-ScrollTrigger.create({
-  trigger: deviceSectionRef.current,
-  start: "top top",
-  end: `+=${scrollDistance}`,
-  scrub: true,
-  onUpdate: (self) => {
-    const step = Math.round(self.progress * totalSteps);
-    if (step !== previousIndex) {
-      const from = screenRefs.current[previousIndex];
-      const to = screenRefs.current[step];
+            if (from && to) {
+              gsap.set(to, { x: `${100 * direction}%`, opacity: 1 });
+              gsap.to(from, { x: `${-100 * direction}%`, opacity: 0, duration: 0.5 });
+              gsap.to(to, { x: "0%", duration: 0.5 });
+            }
 
-      if (from && to) {
-        // Direction: forward or backward
-        const direction = step > previousIndex ? "forward" : "backward";
+            // Update text cards
+            const leftCard = textCardsRef.current[0];
+            const rightCard = textCardsRef.current[1];
 
-        // Reset entering screen's position based on direction
-        gsap.set(to, { x: direction === "forward" ? "100%" : "-100%", opacity: 1 });
+            if (deviceTexts[step - 1]) {
+              const h3 = leftCard && leftCard.querySelector("h3");
+              const p = leftCard && leftCard.querySelector("p");
+              if (h3) h3.textContent = deviceTexts[step - 1].heading;
+              if (p) p.textContent = deviceTexts[step - 1].para;
+              gsap.to(leftCard, { opacity: 0.3, duration: 0.3 });
+            } else {
+              gsap.to(leftCard, { opacity: 0, duration: 0.3 });
+            }
 
-        // Animate both
-        gsap.to(from, { x: direction === "forward" ? "-100%" : "100%", opacity: 0, duration: 0.4 });
-        gsap.to(to, { x: "0%", duration: 0.4 });
+            const h3Right = rightCard && rightCard.querySelector("h3");
+            const pRight = rightCard && rightCard.querySelector("p");
+            if (h3Right) h3Right.textContent = deviceTexts[step].heading;
+            if (pRight) pRight.textContent = deviceTexts[step].para;
+            gsap.to(rightCard, { opacity: 1, duration: 0.3 });
 
-        previousIndex = step;
-      }
-    }
-  },
-});
-
+            previousIndex = step;
+          }
+        },
+      });
     }, containerRef);
 
     return () => ctx.revert();
   }, []);
-
   return (
     <div ref={containerRef} className="overflow-x-hidden bg-[#090113]">
       {/* Other sections stay the same */}
@@ -331,49 +328,58 @@ ScrollTrigger.create({
       </section>
 
       {/* ---------- DEVICE SHOWCASE SECTION ---------- */}
-      <section
-        ref={deviceSectionRef}
-        className="h-screen w-screen bg-[#2E0435] relative flex items-center justify-center px-10"
+   <section
+  ref={deviceSectionRef}
+  className="h-screen w-screen bg-[#2E0435] relative overflow-visible"
+>
+  <div className="relative w-full h-full grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-8 lg:px-0 gap-y-10">
+    
+    {/* Left card - on small screens will appear on top */}
+    <div className="flex justify-center lg:justify-end lg:pr-12 order-1 lg:order-none">
+      <div
+        className="w-full sm:w-[300px] text-center lg:text-right opacity-30"
+        ref={(el) => (textCardsRef.current[0] = el)}
       >
-        {/* Fixed hand with sliding screens */}
-        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
-          <img
-            src={handImage}
-            alt="hand"
-            className="w-[500px] max-h-[90vh] object-contain ml-20"
-          />
+        <h3 className="text-lg sm:text-xl font-bold text-white/50">Connect</h3>
+        <p className="text-sm sm:text-base text-white/30">Instantly sync across devices.</p>
+      </div>
+    </div>
 
-          {/* Wrapper for all screen images */}
-          <div ref={screenWrapperRef} className="absolute top-[5%] left-[28.5%] w-[35%] h-[93%] overflow-hidden rounded-xl z-30">
-            {deviceScreens.map((src, i) => (
-              <img
-                key={i}
-                ref={(el) => (screenRefs.current[i] = el)}
-                src={src}
-                alt={`screen-${i}`}
-                className="absolute w-full h-full object-cover rounded-xl shadow-lg opacity-0"
-                style={{ top: 0, left: 0 }}
-              />
-            ))}
-          </div>
+    {/* Phone with screen - centered */}
+    <div className="relative z-10 order-3 lg:order-none flex justify-center">
+      <div className="relative w-fit">
+        <img src={handImage} className="w-[250px] sm:w-[400px] lg:w-[500px] mt-[40%] sm:mt-[40%] object-contain mx-auto" />
+        
+        <div
+          ref={screenWrapperRef}
+          className="absolute top-[5%] left-[17.5%] w-[65%] sm:w-[40%] lg:w-[40%] h-[90%] overflow-hidden rounded-xl z-30"
+        >
+          {deviceScreens.map((src, i) => (
+            <img
+              key={i}
+              ref={(el) => (screenRefs.current[i] = el)}
+              src={src}
+              className="absolute w-full h-screen mt-[110%] object-cover rounded-xl"
+              alt="screen"
+            />
+          ))}
         </div>
+      </div>
+    </div>
 
-        {/* Scrollable text cards */}
-        <div className="relative overflow-hidden w-full z-10 pt-20">
-          <div ref={textTrackRef} className="flex gap-16 px-[30vw]">
-            {deviceTexts.map((t, i) => (
-              <div
-                key={i}
-                ref={(el) => (textCardsRef.current[i] = el)}
-                className="w-[300px] flex-shrink-0  p-6 rounded-xl text-white"
-              >
-                <h3 className="text-xl font-bold mb-2 text-center">{t.heading}</h3>
-                <p className="text-white/80 text-center">{t.para}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+    {/* Right card - on small screens will appear below */}
+    <div className="flex justify-center lg:justify-start lg:pl-12 order-2 lg:order-none">
+      <div
+        className="w-full sm:w-[300px] text-center lg:text-left"
+        ref={(el) => (textCardsRef.current[1] = el)}
+      >
+        <h3 className="text-lg sm:text-xl font-bold text-white">Discover</h3>
+        <p className="text-sm sm:text-base text-white/80">Explore curated content daily.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
        {/* ---------- END SECTION ---------- */}
       <section className="h-screen w-screen flex items-center justify-center bg-black">
         <h1 className="text-white text-6xl font-extrabold">The End</h1>
